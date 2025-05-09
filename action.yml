@@ -1,0 +1,87 @@
+name: 'Deploy spring boot application'
+description: 'Deploys a spring boot application to a AWS EC2 server using SSH'
+author: 'gskjold'
+inputs:
+  aws-access-key-id:
+    description: 'AWS access key that enables this action to update a security group to allow access from this action'
+    required: true
+  aws-secret-access-key:
+    description: 'AWS access key secret'
+    required: true
+  aws-security-group-id:
+    description: 'The ID of the security group we should add access from this action to'
+    required: true
+  build-jdk:
+    description: 'The JDK version to use while building the application, default will be latest LTS (21)'
+    required: false
+    default: '21'
+  build-goals:
+    description: 'Maven goals to use for building the application'
+    required: false
+    default: 'clean package'
+  application-name:
+    description: 'The name that the application should be install as on the server'
+    required: true
+  application-jar:
+    description: 'The .jar or .war file that is the packaged version of the project'
+    required: true
+  application-conf:
+    description: 'The .conf file containing necessary environmental variables'
+    required: false
+    default: ''
+  application-yml:
+    description: 'The application.yml file the application needs to run'
+    required: false
+    default: ''
+  application-user:
+    description: 'What username the application should run as on the server'
+    required: false
+    default: 'nobody'
+  server-host:
+    description: 'Host name of the server to deploy to'
+    required: true
+  server-ssh-key:
+    description: 'SSH private key that can access the server'
+    required: true
+  serve
+runs:
+  using: 'composite'
+  steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ inputs.aws-access-key-id }}
+        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        aws-region: eu-north-1
+    - name: Get runner IP address
+      id: ip
+      uses: haythem/public-ip@v1
+    - name: Whitelist runner IP address
+      run: |
+        aws ec2 authorize-security-group-ingress \
+          --group-id ${{ inputs.aws-security-group-id }} \
+          --protocol tcp \
+          --port 22 \
+          --cidr ${{ steps.ip.outputs.ipv4 }}/32
+
+    - name: Deploy to server
+      run: |
+        echo "${{ inputs.server-ssh-key }}" > private_key && chmod 600 private_key
+        scp -o StrictHostKeyChecking=no -i private_key ${{ inputs.application-jar }} actions@${{ inputs.server-host }}:work/${{ inputs.application-name }}.jar || exit 1
+        DEPLOY_ARGS="-n ${{ inputs.application-name }} -u ${{ inputs.application-user }} -j work/${{ inputs.application-name }}.jar"
+        if [ -n "${{ inputs.application-yml }}" ]; then
+          scp -o StrictHostKeyChecking=no -i private_key ${{ inputs.application-yml }} actions@${{ inputs.server-host }}:work/${{ inputs.application-name }}.yml || exit 1
+          DEPLOY_ARGS="$DEPLOY_ARGS -a work/${{ inputs.application-name }}.yml"
+        fi
+        if [ -n "${{ inputs.application-conf }}" ]; then
+          scp -o StrictHostKeyChecking=no -i private_key ${{ inputs.application-conf }} actions@${{ inputs.server-host }}:work/${{ inputs.application-name }}.conf || exit 1
+          DEPLOY_ARGS="$DEPLOY_ARGS -c work/${{ inputs.application-name }}.conf"
+        fi
+        ssh -o StrictHostKeyChecking=no -i private_key actions@${{ inputs.server-host }} "~/deploy-spring-boot-2025 $DEPLOY_ARGS" || exit 1
+    - name: Revoke runner IP address
+      run: |
+        aws ec2 revoke-security-group-ingress \
+          --group-id ${{ inputs.aws-security-group-id }} \
+          --protocol tcp \
+          --port 22 \
+          --cidr ${{ steps.ip.outputs.ipv4 }}/32
