@@ -22,7 +22,7 @@ inputs:
   application-name:
     description: 'The name that the application should be install as on the server'
     required: true
-  application-jar:
+  application-file:
     description: 'The .jar or .war file that is the packaged version of the project'
     required: true
   application-conf:
@@ -67,7 +67,7 @@ runs:
     - name: Deploy to server
       run: |
         echo "${{ inputs.server-ssh-key }}" > private_key && chmod 600 private_key
-        scp -o StrictHostKeyChecking=no -i private_key ${{ inputs.application-jar }} actions@${{ inputs.server-host }}:work/${{ inputs.application-name }}.jar || exit 1
+        scp -o StrictHostKeyChecking=no -i private_key ${{ inputs.application-file }} actions@${{ inputs.server-host }}:work/${{ inputs.application-name }}.jar || exit 1
         DEPLOY_ARGS="-n ${{ inputs.application-name }} -u ${{ inputs.application-user }} -j work/${{ inputs.application-name }}.jar"
         if [ -n "${{ inputs.application-yml }}" ]; then
           scp -o StrictHostKeyChecking=no -i private_key ${{ inputs.application-yml }} actions@${{ inputs.server-host }}:work/${{ inputs.application-name }}.yml || exit 1
