@@ -46,13 +46,13 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - id: ip
+      uses: haythem/public-ip@v1
     - uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ inputs.aws-access-key-id }}
         aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
         aws-region: eu-north-1
-    - uses: haythem/public-ip@v1
-      id: ip
     - shell: bash
       run: |
         aws ec2 authorize-security-group-ingress \
