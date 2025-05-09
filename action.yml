@@ -11,14 +11,6 @@ inputs:
   aws-security-group-id:
     description: 'The ID of the security group we should add access from this action to'
     required: true
-  build-jdk:
-    description: 'The JDK version to use while building the application, default will be latest LTS (21)'
-    required: false
-    default: '21'
-  build-goals:
-    description: 'Maven goals to use for building the application'
-    required: false
-    default: 'clean package'
   application-name:
     description: 'The name that the application should be install as on the server'
     required: true
