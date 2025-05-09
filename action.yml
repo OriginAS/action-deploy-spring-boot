@@ -43,7 +43,6 @@ inputs:
   server-ssh-key:
     description: 'SSH private key that can access the server'
     required: true
-  serve
 runs:
   using: 'composite'
   steps:
