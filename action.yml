@@ -71,8 +71,8 @@ runs:
           DEPLOY_ARGS="$DEPLOY_ARGS -c work/${{ inputs.application-name }}.conf"
         fi
         if [ -n "${{ inputs.application-vhost }}" ]; then
-          scp -o StrictHostKeyChecking=no -i private_key ${{ inputs.application-vhost }} actions@${{ inputs.server-host }}:work/${{ inputs.application-name }}.conf || exit 1
-          DEPLOY_ARGS="$DEPLOY_ARGS -v work/${{ inputs.application-name }}.conf"
+          scp -o StrictHostKeyChecking=no -i private_key ${{ inputs.application-vhost }} actions@${{ inputs.server-host }}:work/${{ inputs.application-name }}-vhost.conf || exit 1
+          DEPLOY_ARGS="$DEPLOY_ARGS -v work/${{ inputs.application-name }}-vhost.conf"
         fi
         ssh -o StrictHostKeyChecking=no -i private_key actions@${{ inputs.server-host }} "~/deploy-spring-boot-2025 $DEPLOY_ARGS" || exit 1
     - shell: bash
