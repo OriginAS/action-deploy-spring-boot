@@ -60,8 +60,14 @@ runs:
     - shell: bash
       run: |
         echo "${{ inputs.server-ssh-key }}" > private_key && chmod 600 private_key
-        scp -o StrictHostKeyChecking=no -i private_key ${{ inputs.application-file }} actions@${{ inputs.server-host }}:work/${{ inputs.application-name }}.jar || exit 1
-        DEPLOY_ARGS="-n ${{ inputs.application-name }} -u ${{ inputs.application-user }} -j work/${{ inputs.application-name }}.jar"
+        DEPLOY_ARGS="-n ${{ inputs.application-name }} -u ${{ inputs.application-user }}"
+        if [[ ${{ inputs.application-file }} == *.jar ]];then
+          scp -o StrictHostKeyChecking=no -i private_key ${{ inputs.application-file }} actions@${{ inputs.server-host }}:work/${{ inputs.application-name }}.jar || exit 1
+          DEPLOY_ARGS="$DEPLOY_ARGS -j work/${{ inputs.application-name }}.jar"
+        elif [[ ${{ inputs.application-file }} == *.war ]];then
+          scp -o StrictHostKeyChecking=no -i private_key ${{ inputs.application-file }} actions@${{ inputs.server-host }}:work/${{ inputs.application-name }}.war || exit 1
+          DEPLOY_ARGS="$DEPLOY_ARGS -j work/${{ inputs.application-name }}.war"
+        fi
         if [ -n "${{ inputs.application-yml }}" ]; then
           scp -o StrictHostKeyChecking=no -i private_key ${{ inputs.application-yml }} actions@${{ inputs.server-host }}:work/${{ inputs.application-name }}.yml || exit 1
           DEPLOY_ARGS="$DEPLOY_ARGS -a work/${{ inputs.application-name }}.yml"
