@@ -71,43 +71,58 @@ runs:
         aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
         aws-region: eu-north-1
     - shell: bash
+      env:
+        AWS_SG: ${{ inputs.aws-security-group-id }}
+        RUNNER_IP: ${{ steps.ip.outputs.ipv4 }}
       run: |
         aws ec2 authorize-security-group-ingress \
-          --group-id ${{ inputs.aws-security-group-id }} \
+          --group-id ${AWS_SG} \
           --protocol tcp \
           --port 22 \
-          --cidr ${{ steps.ip.outputs.ipv4 }}/32
+          --cidr ${RUNNER_IP}/32
 
     - shell: bash
+      env:
+        SSH_KEY: ${{ inputs.server-ssh-key }}
+        APP_NAME: ${{ inputs.application-name }}
+        APP_USER: ${{ inputs.application-user }}
+        APP_FILE: ${{ inputs.application-file }}
+        SERVER_HOST: ${{ inputs.server-host }}
+        APP_YML: ${{ inputs.application-yml }}
+        APP_CONF: ${{ inputs.application-conf }}
+        APP_VHOST: ${{ inputs.application-vhost }}
       run: |
-        echo "${{ inputs.server-ssh-key }}" > private_key && chmod 600 private_key
-        DEPLOY_ARGS="-n ${{ inputs.application-name }} -u ${{ inputs.application-user }}"
-        if [[ ${{ inputs.application-file }} == *.jar ]];then
-          scp -o StrictHostKeyChecking=no -i private_key ${{ inputs.application-file }} actions@${{ inputs.server-host }}:work/${{ inputs.application-name }}.jar || exit 1
-          DEPLOY_ARGS="$DEPLOY_ARGS -j work/${{ inputs.application-name }}.jar"
-        elif [[ ${{ inputs.application-file }} == *.war ]];then
-          scp -o StrictHostKeyChecking=no -i private_key ${{ inputs.application-file }} actions@${{ inputs.server-host }}:work/${{ inputs.application-name }}.war || exit 1
-          DEPLOY_ARGS="$DEPLOY_ARGS -j work/${{ inputs.application-name }}.war"
+        echo "${SSH_KEY}" > private_key && chmod 600 private_key
+        DEPLOY_ARGS="-n ${APP_NAME} -u ${APP_USER}"
+        if [[ ${APP_FILE} == *.jar ]];then
+          scp -o StrictHostKeyChecking=no -i private_key ${APP_FILE} actions@${SERVER_HOST}:work/${APP_NAME}.jar || exit 1
+          DEPLOY_ARGS="$DEPLOY_ARGS -j work/${APP_NAME}.jar"
+        elif [[ ${APP_FILE} == *.war ]];then
+          scp -o StrictHostKeyChecking=no -i private_key ${APP_FILE} actions@${SERVER_HOST}:work/${APP_NAME}.war || exit 1
+          DEPLOY_ARGS="$DEPLOY_ARGS -j work/${APP_NAME}.war"
         fi
-        if [ -n "${{ inputs.application-yml }}" ]; then
-          scp -o StrictHostKeyChecking=no -i private_key ${{ inputs.application-yml }} actions@${{ inputs.server-host }}:work/${{ inputs.application-name }}.yml || exit 1
-          DEPLOY_ARGS="$DEPLOY_ARGS -a work/${{ inputs.application-name }}.yml"
+        if [ -n "${APP_YML}" ]; then
+          scp -o StrictHostKeyChecking=no -i private_key ${APP_YML} actions@${SERVER_HOST}:work/${APP_NAME}.yml || exit 1
+          DEPLOY_ARGS="$DEPLOY_ARGS -a work/${APP_NAME}.yml"
         fi
-        if [ -n "${{ inputs.application-conf }}" ]; then
-          scp -o StrictHostKeyChecking=no -i private_key ${{ inputs.application-conf }} actions@${{ inputs.server-host }}:work/${{ inputs.application-name }}.conf || exit 1
-          DEPLOY_ARGS="$DEPLOY_ARGS -c work/${{ inputs.application-name }}.conf"
+        if [ -n "${APP_CONF}" ]; then
+          scp -o StrictHostKeyChecking=no -i private_key ${APP_CONF} actions@${SERVER_HOST}:work/${APP_NAME}.conf || exit 1
+          DEPLOY_ARGS="$DEPLOY_ARGS -c work/${APP_NAME}.conf"
         fi
-        if [ -n "${{ inputs.application-vhost }}" ]; then
-          scp -o StrictHostKeyChecking=no -i private_key ${{ inputs.application-vhost }} actions@${{ inputs.server-host }}:work/${{ inputs.application-name }}-vhost.conf || exit 1
-          DEPLOY_ARGS="$DEPLOY_ARGS -v work/${{ inputs.application-name }}-vhost.conf"
+        if [ -n "${APP_VHOST}" ]; then
+          scp -o StrictHostKeyChecking=no -i private_key ${APP_VHOST} actions@${SERVER_HOST}:work/${APP_NAME}-vhost.conf || exit 1
+          DEPLOY_ARGS="$DEPLOY_ARGS -v work/${APP_NAME}-vhost.conf"
         fi
-        ssh -o StrictHostKeyChecking=no -i private_key actions@${{ inputs.server-host }} "~/deploy-spring-boot-2025 $DEPLOY_ARGS" || exit 1
+        ssh -o StrictHostKeyChecking=no -i private_key actions@${SERVER_HOST} "~/deploy-spring-boot-2025 $DEPLOY_ARGS" || exit 1
     - name: Revoke runner IP address
       if: always() && steps.ip.outputs.ipv4 != ''
       shell: bash
+      env:
+        AWS_SG: ${{ inputs.aws-security-group-id }}
+        RUNNER_IP: ${{ steps.ip.outputs.ipv4 }}
       run: |
         aws ec2 revoke-security-group-ingress \
-          --group-id ${{ inputs.aws-security-group-id }} \
+          --group-id ${AWS_SG} \
           --protocol tcp \
           --port 22 \
-          --cidr ${{ steps.ip.outputs.ipv4 }}/32
+          --cidr ${RUNNER_IP}/32
